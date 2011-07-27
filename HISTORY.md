@@ -1,3 +1,7 @@
+## 0.2.3 (2011-07-27)
+
+* Adding support for Cedar stack so that scale is used to add workers.
+
 ## 0.2.2 (2011-03-31)
 
 * Adding on_failure hook to scale workers down after a failure occurred

@@ -23,13 +23,24 @@ module Resque
       end
 
       def set_workers(number_of_workers)
+        debugger
         if number_of_workers != current_workers
-          heroku_client.set_workers(Resque::Plugins::HerokuAutoscaler::Config.heroku_app, number_of_workers)
+          if /cedar/ =~ current_stack
+            heroku_client.ps_scale(Resque::Plugins::HerokuAutoscaler::Config.heroku_app, {"type" => "worker", "qty" => number_of_workers})
+          else
+            heroku_client.set_workers(Resque::Plugins::HerokuAutoscaler::Config.heroku_app, number_of_workers)
+          end
         end
       end
 
       def current_workers
         heroku_client.info(Resque::Plugins::HerokuAutoscaler::Config.heroku_app)[:workers].to_i
+      end
+
+      def current_stack
+        stack_list = heroku_client.list_stacks(Resque::Plugins::HerokuAutoscaler::Config.heroku_app)
+        stack = stack_list.find {|s| s['current']} if stack_list
+        stack['name'] if stack
       end
 
       def heroku_client
