@@ -23,7 +23,6 @@ module Resque
       end
 
       def set_workers(number_of_workers)
-        debugger
         if number_of_workers != current_workers
           if /cedar/ =~ current_stack
             heroku_client.ps_scale(Resque::Plugins::HerokuAutoscaler::Config.heroku_app, {"type" => "worker", "qty" => number_of_workers})
