@@ -9,12 +9,14 @@ module Resque
         if !Resque::Plugins::HerokuAutoscaler::Config.scaling_disabled? && \
           Resque.info[:workers] == 0 && \
           Resque::Plugins::HerokuAutoscaler::Config.new_worker_count(Resque.info[:pending]) >= 1
+          debugger
           set_workers(1)
           Resque.redis.set('last_scaled', Time.now)
         end
       end
 
       def after_perform_scale_workers(*args)
+        debugger
         calculate_and_set_workers
       end
 
@@ -33,6 +35,7 @@ module Resque
       end
 
       def current_workers
+        puts "current_workers = #{heroku_client.info(Resque::Plugins::HerokuAutoscaler::Config.heroku_app)[:workers].to_i}"
         heroku_client.info(Resque::Plugins::HerokuAutoscaler::Config.heroku_app)[:workers].to_i
       end
 
