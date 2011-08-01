@@ -4,19 +4,18 @@ module Resque
   module Plugins
     module HerokuAutoscaler
       @@heroku_client = nil
+      @stack = nil
 
       def after_enqueue_scale_workers_up(*args)
         if !Resque::Plugins::HerokuAutoscaler::Config.scaling_disabled? && \
           Resque.info[:workers] == 0 && \
           Resque::Plugins::HerokuAutoscaler::Config.new_worker_count(Resque.info[:pending]) >= 1
-          debugger
           set_workers(1)
           Resque.redis.set('last_scaled', Time.now)
         end
       end
 
       def after_perform_scale_workers(*args)
-        debugger
         calculate_and_set_workers
       end
 
@@ -26,7 +25,7 @@ module Resque
 
       def set_workers(number_of_workers)
         if number_of_workers != current_workers
-          if /cedar/ =~ current_stack
+          if /cedar/ =~ stack
             heroku_client.ps_scale(Resque::Plugins::HerokuAutoscaler::Config.heroku_app, {"type" => "workers", "qty" => number_of_workers})
           else
             heroku_client.set_workers(Resque::Plugins::HerokuAutoscaler::Config.heroku_app, number_of_workers)
@@ -35,14 +34,15 @@ module Resque
       end
 
       def current_workers
-        puts "current_workers = #{heroku_client.info(Resque::Plugins::HerokuAutoscaler::Config.heroku_app)[:workers].to_i}"
-        heroku_client.info(Resque::Plugins::HerokuAutoscaler::Config.heroku_app)[:workers].to_i
+        if /cedar/ =~ stack
+          heroku_client.ps(Resque::Plugins::HerokuAutoscaler::Config.heroku_app).count { |p| p['process'] =~ /workers\.\d?/ }
+        else
+          heroku_client.info(Resque::Plugins::HerokuAutoscaler::Config.heroku_app)[:workers].to_i
+        end
       end
 
-      def current_stack
-        stack_list = heroku_client.list_stacks(Resque::Plugins::HerokuAutoscaler::Config.heroku_app)
-        stack = stack_list.find {|s| s['current']} if stack_list
-        stack['name'] if stack
+      def stack
+        @stack || @stack = heroku_client.info(Resque::Plugins::HerokuAutoscaler::Config.heroku_app)[:stack]
       end
 
       def heroku_client
